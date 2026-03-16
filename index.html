@@ -3,201 +3,206 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Painel de Produção Industrial</title>
-    <!-- Tailwind CSS with Config for Dark Mode -->
+    <title>SaaS Dashboard | Gestão à Vista</title>
+    
+    <!-- Tailwind CSS & Configuração -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
         tailwind.config = {
             darkMode: 'class',
             theme: {
-                extend: {}
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        mono: ['JetBrains Mono', 'monospace'],
+                    },
+                    colors: {
+                        brand: {
+                            bg: '#09090b', // zinc-950
+                            surface: '#18181b', // zinc-900
+                            border: '#27272a', // zinc-800
+                            highlight: '#3b82f6', // blue-500
+                        }
+                    }
+                }
             }
         }
     </script>
-    <!-- Google Fonts -->
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&family=JetBrains+Mono:wght@700&display=swap" rel="stylesheet">
-    <!-- Lucide Icons -->
+    
+    <!-- Fontes e Ícones -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@700&display=swap" rel="stylesheet">
     <script src="https://unpkg.com/lucide@latest"></script>
+    
     <!-- Firebase SDK v8 -->
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
 
-    <style>
-        body {
-            font-family: 'Inter', sans-serif;
-        }
-        .mono { font-family: 'JetBrains Mono', monospace; }
-        
-        /* Transição fluída na barra de progresso e cor */
-        .progress-transition {
-            transition: width 1s cubic-bezier(0.22, 1, 0.36, 1), background-color 1s ease-in-out;
-        }
-        
-        /* Animação de Entrada Flutuante */
-        @keyframes fadeUp {
-            from { opacity: 0; transform: translateY(20px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-        .animate-fade-up { 
-            animation: fadeUp 0.6s ease-out both; 
+    <style type="text/tailwindcss">
+        @layer utilities {
+            /* Design System: Glassmorphism Components */
+            .glass-card {
+                @apply bg-white/5 dark:bg-brand-surface/60 backdrop-blur-xl border border-black/5 dark:border-white/5 shadow-xl transition-all duration-300;
+            }
+            .glass-card:hover {
+                @apply dark:border-white/10 dark:bg-brand-surface/80 shadow-2xl -translate-y-1;
+            }
+            
+            /* Tipografia Premium para Grandes Números */
+            .text-premium-kpi {
+                @apply font-black tracking-tighter text-transparent bg-clip-text bg-gradient-to-br from-white to-zinc-400;
+            }
+            
+            /* Efeitos Puros de OEE */
+            .text-oee-gradient {
+                @apply bg-gradient-to-r from-blue-400 to-indigo-500 text-transparent bg-clip-text;
+            }
+            .text-oee-warning {
+                @apply bg-gradient-to-r from-amber-400 to-orange-500 text-transparent bg-clip-text;
+            }
+
+            /* Transições Suaves */
+            .smooth-bar {
+                @apply transition-all duration-1000 ease-in-out;
+            }
         }
 
-        /* Feedback visual (Flash) ao atualizar dados - Herda as cores do tema escuro/claro automaticamente */
-        .flash-update {
-            animation: flashHighlight 0.6s ease-out;
+        /* Microinteração de "Online" */
+        .status-dot {
+            animation: pulse-ring 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
         }
-        @keyframes flashHighlight {
-            0%, 100% { border-color: transparent; box-shadow: none; }
-            50% { border-color: #22c55e; box-shadow: 0 0 15px rgba(34,197,94,0.4); }
+        @keyframes pulse-ring {
+            0% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.7); }
+            70% { box-shadow: 0 0 0 6px rgba(34, 197, 94, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0); }
+        }
+
+        /* Microinteração de Flash ao Atualizar Dados */
+        .data-update-flash {
+            animation: soft-glow 0.8s ease-out;
+        }
+        @keyframes soft-glow {
+            0%, 100% { box-shadow: inset 0 0 0 transparent; border-color: rgba(255,255,255,0.05); }
+            50% { box-shadow: inset 0 0 20px rgba(59, 130, 246, 0.15); border-color: rgba(59, 130, 246, 0.4); }
         }
     </style>
 </head>
-<body class="h-screen w-screen overflow-hidden flex flex-col p-4 md:p-6 bg-slate-50 dark:bg-[#0d1117] text-slate-900 dark:text-[#e2e8f0] transition-colors duration-300">
+<body class="h-screen w-screen overflow-hidden flex flex-col p-4 md:p-6 bg-zinc-50 dark:bg-brand-bg text-zinc-900 dark:text-zinc-100 transition-colors duration-500">
 
-    <!-- HEADER (flex-none preserva a altura exata do cabeçalho) -->
-    <header class="flex-none flex flex-col md:flex-row justify-between items-start md:items-center gap-6 mb-6">
+    <!-- ================= HEADER ================= -->
+    <header class="flex-none flex flex-col md:flex-row justify-between items-center gap-6 mb-6">
+        <!-- Logo e Título -->
         <div class="flex items-center gap-4">
-            <div class="w-12 h-12 bg-emerald-100 dark:bg-emerald-500/10 rounded-xl flex items-center justify-center border border-emerald-200 dark:border-emerald-500/20">
-                <i data-lucide="activity" class="text-emerald-600 dark:text-emerald-500" aria-hidden="true"></i>
+            <div class="w-14 h-14 bg-gradient-to-br from-indigo-500 to-blue-600 rounded-2xl flex items-center justify-center shadow-lg shadow-blue-500/20">
+                <i data-lucide="layout-dashboard" class="text-white w-7 h-7" aria-hidden="true"></i>
             </div>
             <div>
-                <h1 class="text-xl font-extrabold tracking-tight leading-none uppercase">Gestão à Vista</h1>
-                <p class="text-slate-500 dark:text-[#94a3b8] text-xs mt-1 uppercase tracking-widest font-semibold">Monitorização Industrial</p>
+                <h1 class="text-2xl font-black tracking-tight leading-none">Gestão Operacional</h1>
+                <p class="text-zinc-500 dark:text-zinc-400 text-xs mt-1.5 uppercase tracking-widest font-semibold flex items-center gap-2">
+                    <span class="w-2 h-2 rounded-full bg-emerald-500 status-dot"></span> Real-time Sync
+                </p>
             </div>
         </div>
 
-        <div class="flex items-center gap-4">
-            <!-- Eficiência Global (OEE) - AUMENTADA -->
-            <div class="hidden md:flex flex-col items-end pr-6 border-r border-slate-300 dark:border-[#30363d]">
-                <span class="text-[10px] uppercase tracking-widest text-slate-500 dark:text-[#94a3b8] font-bold">
-                    <span class="sr-only">Valor do </span>OEE Global
-                </span>
-                <span id="global-oee" class="text-6xl xl:text-[80px] font-extrabold text-blue-600 dark:text-blue-400 mono leading-none mt-1">--%</span>
+        <!-- Ferramentas Globais -->
+        <div class="flex items-center gap-6">
+            <!-- OEE Global -->
+            <div class="hidden md:flex flex-col items-end pr-6 border-r border-zinc-200 dark:border-brand-border">
+                <span class="text-[10px] uppercase tracking-widest text-zinc-500 dark:text-zinc-400 font-bold mb-1">OEE Global da Planta</span>
+                <span id="global-oee" class="text-6xl xl:text-[80px] font-black tracking-tighter leading-none text-oee-gradient">--%</span>
             </div>
 
-            <!-- Relógio e Data -->
-            <div class="bg-white dark:bg-[#161b22] px-4 py-2 rounded-xl border border-slate-200 dark:border-[#30363d] flex items-center gap-3">
-                <i data-lucide="clock" class="text-slate-500 dark:text-[#94a3b8] w-4 h-4" aria-hidden="true"></i>
-                <div class="flex flex-col items-end">
-                    <span id="current-time" class="mono font-bold text-sm leading-none">--:--:--</span>
-                    <span id="current-date" class="text-[10px] text-slate-500 dark:text-[#94a3b8] font-semibold leading-none mt-1">--/--/----</span>
+            <!-- Relógio e Ações -->
+            <div class="flex items-center gap-3">
+                <div class="glass-card px-5 py-3 rounded-2xl flex items-center gap-4">
+                    <i data-lucide="clock" class="text-zinc-400 w-5 h-5" aria-hidden="true"></i>
+                    <div class="flex flex-col items-end">
+                        <span id="current-time" class="font-mono font-bold text-base leading-none text-zinc-800 dark:text-white">--:--:--</span>
+                        <span id="current-date" class="text-[10px] text-zinc-500 dark:text-zinc-400 font-semibold leading-none mt-1.5 uppercase tracking-wider">--/--/----</span>
+                    </div>
                 </div>
-            </div>
 
-            <!-- Botões de Ação -->
-            <div class="flex items-center gap-2">
-                <!-- Toggle Dark/Light Mode -->
-                <button id="btn-theme" class="p-2.5 bg-white dark:bg-[#161b22] border border-slate-200 dark:border-[#30363d] rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors" aria-label="Alternar Tema Claro e Escuro">
-                    <i data-lucide="sun" class="text-slate-500 dark:text-[#94a3b8] w-4 h-4 hidden dark:block" aria-hidden="true"></i>
-                    <i data-lucide="moon" class="text-slate-500 dark:text-[#94a3b8] w-4 h-4 block dark:hidden" aria-hidden="true"></i>
-                </button>
-                <!-- Fullscreen -->
-                <button id="btn-fullscreen" class="p-2.5 bg-white dark:bg-[#161b22] border border-slate-200 dark:border-[#30363d] rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors" aria-label="Alternar Ecrã Inteiro">
-                    <i data-lucide="maximize" class="text-slate-500 dark:text-[#94a3b8] w-4 h-4" aria-hidden="true"></i>
-                </button>
+                <div class="flex flex-col gap-2">
+                    <button id="btn-theme" class="p-3 glass-card rounded-xl text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white" aria-label="Alternar Tema">
+                        <i data-lucide="sun" class="w-4 h-4 hidden dark:block" aria-hidden="true"></i>
+                        <i data-lucide="moon" class="w-4 h-4 block dark:hidden" aria-hidden="true"></i>
+                    </button>
+                    <button id="btn-fullscreen" class="p-3 glass-card rounded-xl text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white" aria-label="Ecrã Inteiro">
+                        <i data-lucide="maximize" class="w-4 h-4" aria-hidden="true"></i>
+                    </button>
+                </div>
             </div>
         </div>
     </header>
 
-    <!-- MAIN CONTENT (flex-1 min-h-0 garante que absorve a altura restante sem scrollar o ecrã) -->
+    <!-- ================= MAIN CONTENT ================= -->
     <main class="flex-1 min-h-0 grid grid-cols-1 lg:grid-cols-12 gap-6">
         
-        <!-- CONTAINER DE LINHAS (grid-rows-2 empurra as linhas para preencher a altura 50/50) -->
-        <div id="lines-container" class="lg:col-span-8 grid grid-cols-1 md:grid-cols-2 grid-rows-2 gap-4 h-full">
-            <!-- SKELETON LOADERS INICIAIS -->
+        <!-- Cartões de Produção (8 colunas) -->
+        <div id="lines-container" class="lg:col-span-8 grid grid-cols-1 md:grid-cols-2 grid-rows-2 gap-5 h-full">
+            <!-- Os Skeletons agora usam o design system -->
             <div id="loading-skeletons" class="contents">
-                <div class="flex flex-col bg-white dark:bg-[#161b22] border border-slate-200 dark:border-[#30363d] rounded-2xl overflow-hidden animate-pulse h-full">
-                    <div class="p-5 flex-1 flex flex-col justify-center">
-                        <div class="flex items-center gap-3 mb-6">
-                            <div class="w-10 h-10 bg-slate-200 dark:bg-slate-800 rounded-lg"></div>
-                            <div class="space-y-2 flex-1"><div class="h-4 bg-slate-200 dark:bg-slate-800 rounded w-1/3"></div></div>
-                        </div>
-                        <div class="space-y-3"><div class="h-[60px] bg-slate-200 dark:bg-slate-800 rounded w-full"></div><div class="h-2 bg-slate-200 dark:bg-slate-800 rounded w-5/6"></div></div>
-                    </div>
-                    <div class="grid grid-cols-2 gap-4 p-5 bg-slate-100 dark:bg-[#0d1117] mt-auto">
-                        <div class="h-[60px] bg-slate-200 dark:bg-slate-800 rounded"></div><div class="h-[60px] bg-slate-200 dark:bg-slate-800 rounded"></div>
-                    </div>
-                </div>
-                <div class="flex flex-col bg-white dark:bg-[#161b22] border border-slate-200 dark:border-[#30363d] rounded-2xl overflow-hidden animate-pulse h-full">
-                    <div class="p-5 flex-1 flex flex-col justify-center">
-                        <div class="flex items-center gap-3 mb-6">
-                            <div class="w-10 h-10 bg-slate-200 dark:bg-slate-800 rounded-lg"></div>
-                            <div class="space-y-2 flex-1"><div class="h-4 bg-slate-200 dark:bg-slate-800 rounded w-1/3"></div></div>
-                        </div>
-                        <div class="space-y-3"><div class="h-[60px] bg-slate-200 dark:bg-slate-800 rounded w-full"></div><div class="h-2 bg-slate-200 dark:bg-slate-800 rounded w-5/6"></div></div>
-                    </div>
-                    <div class="grid grid-cols-2 gap-4 p-5 bg-slate-100 dark:bg-[#0d1117] mt-auto">
-                        <div class="h-[60px] bg-slate-200 dark:bg-slate-800 rounded"></div><div class="h-[60px] bg-slate-200 dark:bg-slate-800 rounded"></div>
-                    </div>
+                <div class="glass-card rounded-3xl animate-pulse h-full p-6 flex flex-col justify-between">
+                    <div class="h-10 w-32 bg-zinc-200 dark:bg-zinc-800 rounded-lg mb-4"></div>
+                    <div class="h-16 w-full bg-zinc-200 dark:bg-zinc-800 rounded-xl mb-4"></div>
+                    <div class="h-20 w-full bg-zinc-200 dark:bg-zinc-800 rounded-xl"></div>
                 </div>
             </div>
-            <!-- Cards reais serão injetados aqui -->
         </div>
 
-        <!-- PAINÉIS LATERAIS -->
-        <div class="lg:col-span-4 flex flex-col gap-6 h-full min-h-0">
-            <!-- EFICIÊNCIA POR SETOR -->
-            <div class="flex-none bg-white dark:bg-[#161b22] border border-slate-200 dark:border-[#30363d] rounded-2xl overflow-hidden flex flex-col">
-                <div class="px-5 py-4 border-b border-slate-100 dark:border-[#30363d] flex items-center gap-3 bg-slate-50 dark:bg-transparent">
-                    <i data-lucide="pie-chart" class="text-blue-500 dark:text-blue-400 w-5 h-5" aria-hidden="true"></i>
-                    <h2 class="text-sm font-bold uppercase tracking-tight">Eficiência por Setor</h2>
+        <!-- Painéis Analíticos (4 colunas) -->
+        <div class="lg:col-span-4 flex flex-col gap-5 h-full min-h-0">
+            
+            <!-- Setores -->
+            <div class="flex-none glass-card rounded-3xl flex flex-col overflow-hidden relative">
+                <div class="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-500 to-cyan-400 opacity-50"></div>
+                <div class="px-6 py-5 border-b border-zinc-100 dark:border-white/5 flex items-center gap-3">
+                    <i data-lucide="pie-chart" class="text-blue-500 w-5 h-5" aria-hidden="true"></i>
+                    <h2 class="text-sm font-bold uppercase tracking-widest text-zinc-800 dark:text-zinc-100">Performance de Setor</h2>
                 </div>
-                <!-- Mudado para <ul> -->
                 <ul id="sectors-container" class="p-6 flex flex-col gap-6">
-                    <!-- Skeletons Lateral -->
-                    <li class="animate-pulse space-y-4">
-                        <div><div class="flex justify-between mb-2"><div class="h-3 bg-slate-200 dark:bg-slate-800 rounded w-1/4"></div><div class="h-3 bg-slate-200 dark:bg-slate-800 rounded w-1/6"></div></div><div class="h-3 bg-slate-200 dark:bg-slate-800 rounded-full w-full"></div></div>
-                        <div><div class="flex justify-between mb-2"><div class="h-3 bg-slate-200 dark:bg-slate-800 rounded w-1/3"></div><div class="h-3 bg-slate-200 dark:bg-slate-800 rounded w-1/6"></div></div><div class="h-3 bg-slate-200 dark:bg-slate-800 rounded-full w-full"></div></div>
-                        <div><div class="flex justify-between mb-2"><div class="h-3 bg-slate-200 dark:bg-slate-800 rounded w-1/4"></div><div class="h-3 bg-slate-200 dark:bg-slate-800 rounded w-1/6"></div></div><div class="h-3 bg-slate-200 dark:bg-slate-800 rounded-full w-full"></div></div>
-                    </li>
+                    <li class="animate-pulse space-y-4"><div class="h-4 bg-zinc-800 rounded w-1/2"></div><div class="h-2 bg-zinc-800 rounded w-full"></div></li>
                 </ul>
             </div>
 
-            <!-- RANKING PERFORMANCE -->
-            <div class="flex-1 min-h-0 bg-white dark:bg-[#161b22] border border-slate-200 dark:border-[#30363d] rounded-2xl flex flex-col overflow-hidden">
-                <div class="px-5 py-4 border-b border-slate-100 dark:border-[#30363d] flex items-center justify-between bg-slate-50 dark:bg-transparent">
+            <!-- Ranking -->
+            <div class="flex-1 min-h-0 glass-card rounded-3xl flex flex-col overflow-hidden relative">
+                <div class="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-amber-500 to-orange-400 opacity-50"></div>
+                <div class="px-6 py-5 border-b border-zinc-100 dark:border-white/5 flex items-center justify-between">
                     <div class="flex items-center gap-3">
-                        <i data-lucide="trophy" class="text-amber-500 dark:text-amber-400 w-5 h-5" aria-hidden="true"></i>
-                        <h2 class="text-sm font-bold uppercase tracking-tight">Ranking Performance</h2>
+                        <i data-lucide="trophy" class="text-amber-500 w-5 h-5" aria-hidden="true"></i>
+                        <h2 class="text-sm font-bold uppercase tracking-widest text-zinc-800 dark:text-zinc-100">Leaderboard</h2>
                     </div>
-                    <span class="text-[9px] bg-slate-200 dark:bg-[#30363d] text-slate-700 dark:text-[#94a3b8] px-3 py-1 rounded uppercase font-bold tracking-widest cursor-help" title="Acumulado consolidado até o dia anterior (D-1)">PONTOS (D-1)</span>
+                    <span class="text-[9px] bg-zinc-200 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 px-3 py-1.5 rounded-md uppercase font-bold tracking-widest">Pontos (D-1)</span>
                 </div>
-                <!-- Mudado para <ul>, usa flex-1 e overflow auto caso as linhas aumentem -->
-                <ul id="ranking-container" class="p-2 text-sm flex-1 overflow-y-auto">
-                    <!-- Skeletons Ranking -->
-                    <li class="p-4 animate-pulse flex justify-between items-center">
-                        <div class="flex items-center gap-4"><div class="w-6 h-6 bg-slate-200 dark:bg-slate-800 rounded-md"></div><div class="h-4 bg-slate-200 dark:bg-slate-800 rounded w-16"></div></div>
-                        <div class="h-4 bg-slate-200 dark:bg-slate-800 rounded w-12"></div>
-                    </li>
+                <ul id="ranking-container" class="p-4 lg:p-5 flex-1 flex flex-col gap-3 overflow-y-auto">
+                    <li class="flex-1 animate-pulse bg-zinc-800 rounded-xl"></li>
                 </ul>
             </div>
         </div>
     </main>
 
-    <!-- FOOTER (flex-none) -->
-    <footer class="flex-none mt-6 bg-amber-50 dark:bg-amber-500/5 border border-amber-200 dark:border-amber-500/10 rounded-xl p-3 overflow-hidden whitespace-nowrap">
-        <div class="flex items-center gap-4 animate-pulse">
-            <i data-lucide="alert-triangle" class="text-amber-500 w-5 h-5 flex-shrink-0" aria-hidden="true"></i>
-            <p id="alert-marquee" class="text-amber-700 dark:text-amber-200/80 text-sm font-bold uppercase tracking-wider" aria-live="polite">
-                Conectando ao banco de dados industrial...
-            </p>
+    <!-- ================= FOOTER ================= -->
+    <footer class="flex-none mt-5 flex items-center justify-between text-xs font-semibold tracking-widest uppercase">
+        <div class="flex items-center gap-3 text-zinc-500 dark:text-zinc-400" id="footer-status">
+            <i data-lucide="shield-check" class="w-4 h-4 text-emerald-500"></i>
+            <span id="alert-marquee">Estabelecendo handshake seguro com Firebase...</span>
+        </div>
+        <div class="text-zinc-600 dark:text-zinc-500">
+            SaaS Dashboard Core v2.0
         </div>
     </footer>
 
+    <!-- ================= APPLICATION LOGIC ================= -->
     <script>
         (function() {
-            // Theme Toggle Logic
-            const btnTheme = document.getElementById('btn-theme');
-            btnTheme.addEventListener('click', () => {
-                document.documentElement.classList.toggle('dark');
-            });
-
-            // Mapeamento visual das linhas
-            const lineMeta = {
-                "LA": { color: "#22c55e" },
-                "L1": { color: "#3b82f6" }, // Azul mais forte para ler bem no modo claro
-                "L2": { color: "#f59e0b" },
-                "L3": { color: "#ef4444" }
+            /** * 1. CONFIGURAÇÕES GLOBAIS E ESTADO */
+            const THEME = {
+                lines: {
+                    "LA": { color: "#10b981", bg: "bg-emerald-500/10", text: "text-emerald-500" }, 
+                    "L1": { color: "#3b82f6", bg: "bg-blue-500/10", text: "text-blue-500" }, 
+                    "L2": { color: "#f59e0b", bg: "bg-amber-500/10", text: "text-amber-500" },
+                    "L3": { color: "#ef4444", bg: "bg-red-500/10", text: "text-red-500" }
+                }
             };
 
             const FIXED_LINES = ['LA', 'L1', 'L2', 'L3'];
@@ -207,361 +212,318 @@
                 { key: 'cirurgico', label: 'Cirúrgico' }
             ];
 
-            let currentState = {};
+            let state = {};
             FIXED_LINES.forEach(line => {
-                currentState[line] = {
-                    lineId: line,
-                    setor: "Aguardando...",
+                state[line] = {
+                    lineId: line, setor: "Aguardando", 
                     eficiencia: 0, meta: 0, realizado: 0, hc_prog: 0, rejeito: 0, pontos: 0
                 };
             });
 
-            const numberFormatter = new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
-            const intFormatter = new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 0 });
+            let previousStateData = new Map();
+            const fmtNum = new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+            const fmtInt = new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 0 });
 
-            let flattenedData = [];
-            let previousDataMap = new Map();
+            /**
+             * 2. COMPONENTES DE UI (Factory Functions)
+             */
+            const UIComponents = {
+                TrendIcon: (isUp) => isUp 
+                    ? `<svg class="w-6 h-6 xl:w-8 xl:h-8 text-emerald-400" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"></polyline><polyline points="16 7 22 7 22 13"></polyline></svg>` 
+                    : `<svg class="w-6 h-6 xl:w-8 xl:h-8 text-red-400" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 17 13.5 8.5 8.5 13.5 2 7"></polyline><polyline points="16 17 22 17 22 11"></polyline></svg>`,
+                
+                StatusBadge: (ef) => {
+                    if (ef <= 0) return `<span class="bg-red-500/10 text-red-500 ring-1 ring-red-500/20 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest">Parada</span>`;
+                    if (ef < 85) return `<span class="bg-amber-500/10 text-amber-500 ring-1 ring-amber-500/20 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest">Atenção</span>`;
+                    return `<span class="bg-emerald-500/10 text-emerald-500 ring-1 ring-emerald-500/20 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest flex items-center gap-2"><span class="w-1.5 h-1.5 bg-emerald-500 rounded-full status-dot"></span> Produção</span>`;
+                },
 
-            // Fullscreen Logic
-            const btnFullscreen = document.getElementById('btn-fullscreen');
-            btnFullscreen.addEventListener('click', () => {
-                if (!document.fullscreenElement) {
-                    document.documentElement.requestFullscreen().catch(err => console.log(err));
-                    btnFullscreen.innerHTML = `
-                        <i data-lucide="minimize" class="text-slate-500 dark:text-[#94a3b8] w-4 h-4" aria-hidden="true"></i>
-                    `;
-                } else {
-                    document.exitFullscreen();
-                    btnFullscreen.innerHTML = `
-                        <i data-lucide="maximize" class="text-slate-500 dark:text-[#94a3b8] w-4 h-4" aria-hidden="true"></i>
-                    `;
-                }
-                if (window.lucide) lucide.createIcons();
-            });
-
-            function getStatusInfo(eficiencia) {
-                if (eficiencia <= 0) return { label: "PARADA", cls: "bg-red-100 text-red-700 dark:bg-red-500/10 dark:text-red-500" };
-                if (eficiencia < 85) return { label: "ATENÇÃO", cls: "bg-amber-100 text-amber-700 dark:bg-amber-500/10 dark:text-amber-500" };
-                return { label: "EM PRODUÇÃO", cls: "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-500" };
-            }
-
-            function getBarColor(eficiencia, defaultColor) {
-                if (eficiencia < 50) return '#ef4444'; 
-                if (eficiencia < 85) return '#f59e0b'; 
-                return defaultColor; 
-            }
-
-            function getTrendSvg(isUp) {
-                if(isUp) {
-                    return `<svg class="w-5 h-5 xl:w-8 xl:h-8 text-emerald-500" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"></polyline><polyline points="16 7 22 7 22 13"></polyline></svg><span class="sr-only">Subida ou Mantida</span>`;
-                } else {
-                    return `<svg class="w-5 h-5 xl:w-8 xl:h-8 text-red-500" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="22 17 13.5 8.5 8.5 13.5 2 7"></polyline><polyline points="16 17 22 17 22 11"></polyline></svg><span class="sr-only">Descida</span>`;
-                }
-            }
-
-            const normalizeSector = (str) => {
-                if (!str) return 'outros';
-                const s = str.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-                if (s.includes('auto')) return 'automotivo';
-                if (s.includes('descart')) return 'descartaveis';
-                if (s.includes('cirurg')) return 'cirurgico';
-                return 'outros';
-            };
-
-            function renderDashboard() {
-                const container = document.getElementById('lines-container');
-                const rankingContainer = document.getElementById('ranking-container');
-                const sectorContainer = document.getElementById('sectors-container');
-
-                if (!container || !rankingContainer || !sectorContainer) return;
-
-                const skel = document.getElementById('loading-skeletons');
-                if (skel) skel.remove();
-
-                let totalEficienciaAtivas = 0;
-                let activeLinesCount = 0;
-
-                flattenedData.forEach((item, index) => {
-                    const ef = Number(item.eficiencia) || 0;
-                    const hc = Math.round(Number(item.hc_prog) || 0);
-                    const meta = Number(item.meta) || 0;
-                    const real = Number(item.realizado) || 0;
-                    const rej = Number(item.rejeito) || 0;
-                    
-                    if (meta > 0 || hc > 0 || ef > 0) {
-                        totalEficienciaAtivas += ef;
-                        activeLinesCount++;
-                    }
-
-                    const status = getStatusInfo(ef);
-                    const defaultColor = lineMeta[item.lineId]?.color || "#94a3b8";
-                    const barColor = getBarColor(ef, defaultColor);
-
-                    const prevItem = previousDataMap.get(item.lineId);
-                    const prevEf = prevItem ? (Number(prevItem.eficiencia) || 0) : ef;
-                    const trendUp = ef >= prevEf;
-
-                    let card = document.getElementById(`card-${item.lineId}`);
-
-                    if (!card) {
-                        // Cartão preenche altura (h-full), com interior bg-white/dark e separador de fundo claro na métrica
-                        const cardHTML = `
-                            <div id="card-${item.lineId}" class="flex flex-col h-full bg-white dark:bg-[#161b22] border border-slate-200 dark:border-[#30363d] rounded-2xl overflow-hidden transition-all hover:border-blue-500/30 dark:hover:border-blue-500/30 animate-fade-up" style="animation-delay: ${index * 0.1}s">
-                                
-                                <div class="px-5 py-4 border-b border-slate-100 dark:border-[#30363d] flex justify-between items-center flex-none">
-                                    <div class="flex items-center gap-3">
-                                        <div class="w-10 h-10 rounded-lg flex items-center justify-center font-bold text-lg text-white dark:text-[#0d1117]" style="background-color: ${defaultColor}">
-                                            ${item.lineId}
-                                        </div>
-                                        <div>
-                                            <h2 id="sector-title-${item.lineId}" class="text-sm font-bold uppercase tracking-tight text-slate-800 dark:text-white">${item.setor}</h2>
-                                            <div class="flex items-center gap-1.5 text-slate-500 dark:text-[#94a3b8] text-[10px] mt-0.5 uppercase font-bold">
-                                                <span>${item.lineId}</span>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <span id="status-${item.lineId}" class="text-[9px] font-bold px-2.5 py-1 rounded-full uppercase tracking-widest ${status.cls}">
-                                        ${status.label}
-                                    </span>
+                LineCard: (item, idx, themeData, barColor, trendUp) => `
+                    <div id="card-${item.lineId}" class="glass-card rounded-3xl flex flex-col h-full animate-fade-up" style="animation-delay: ${idx * 0.1}s">
+                        
+                        <div class="px-6 py-5 border-b border-black/5 dark:border-white/5 flex justify-between items-center flex-none">
+                            <div class="flex items-center gap-4">
+                                <div class="w-12 h-12 rounded-xl flex items-center justify-center font-black text-xl shadow-inner ${themeData.bg} ${themeData.text}">
+                                    ${item.lineId}
                                 </div>
-                                
-                                <div class="px-5 py-4 flex-1 flex flex-col justify-center">
-                                    <div class="flex justify-between items-end mb-2">
-                                        <span class="text-xs xl:text-sm uppercase tracking-widest text-slate-500 dark:text-[#94a3b8] font-bold">Eficiência Acumulada</span>
-                                        <span id="ef-val-${item.lineId}" class="text-4xl xl:text-[60px] font-mono font-bold text-slate-800 dark:text-white leading-none">${numberFormatter.format(ef)}%</span>
-                                    </div>
-                                    <div class="h-2 bg-slate-100 dark:bg-[#0d1117] rounded-full overflow-hidden mt-2" role="progressbar" aria-valuenow="${Math.min(ef, 100)}" aria-valuemin="0" aria-valuemax="100">
-                                        <div id="ef-bar-${item.lineId}" class="h-full progress-transition" style="width: ${Math.min(ef, 100)}%; background-color: ${barColor}"></div>
-                                    </div>
-                                </div>
-
-                                <!-- SEPARAÇÃO VISUAL: Fundo alterado e empurrado para o fim do cartao -->
-                                <div class="grid grid-cols-2 gap-4 p-4 lg:p-5 bg-slate-50 dark:bg-[#0d1117] border-t border-slate-100 dark:border-[#30363d] mt-auto flex-none">
-                                    <div class="flex items-center gap-2.5">
-                                        <i data-lucide="target" class="text-slate-400 dark:text-[#94a3b8] w-5 h-5 xl:w-8 xl:h-8" aria-hidden="true"></i>
-                                        <div>
-                                            <span class="block text-xs xl:text-sm uppercase tracking-widest text-slate-500 dark:text-[#94a3b8] font-bold mb-1">Meta</span>
-                                            <span id="meta-${item.lineId}" class="text-4xl xl:text-[60px] font-bold font-mono leading-none text-slate-800 dark:text-white">${intFormatter.format(meta)}</span>
-                                        </div>
-                                    </div>
-                                    <div class="flex items-center gap-2.5">
-                                        <div id="trend-icon-${item.lineId}">
-                                            ${getTrendSvg(trendUp)}
-                                        </div>
-                                        <div>
-                                            <span class="block text-xs xl:text-sm uppercase tracking-widest text-slate-500 dark:text-[#94a3b8] font-bold mb-1">Real</span>
-                                            <span id="real-${item.lineId}" class="text-4xl xl:text-[60px] font-bold font-mono leading-none ${trendUp ? 'text-emerald-600 dark:text-emerald-500' : 'text-red-600 dark:text-red-500'}">${intFormatter.format(real)}</span>
-                                        </div>
-                                    </div>
-                                    <div class="flex items-center gap-2.5">
-                                        <i data-lucide="users" class="text-slate-400 dark:text-[#94a3b8] w-5 h-5 xl:w-8 xl:h-8" aria-hidden="true"></i>
-                                        <div>
-                                            <span class="block text-xs xl:text-sm uppercase tracking-widest text-slate-500 dark:text-[#94a3b8] font-bold mb-1" aria-label="Headcount (Funcionários)">HC</span>
-                                            <span id="hc-${item.lineId}" class="text-4xl xl:text-[60px] font-bold font-mono leading-none text-slate-800 dark:text-white">${intFormatter.format(hc)}</span>
-                                        </div>
-                                    </div>
-                                    <div class="flex items-center gap-2.5">
-                                        <i data-lucide="alert-circle" class="text-slate-400 dark:text-[#94a3b8] w-5 h-5 xl:w-8 xl:h-8" aria-hidden="true"></i>
-                                        <div>
-                                            <span class="block text-xs xl:text-sm uppercase tracking-widest text-slate-500 dark:text-[#94a3b8] font-bold mb-1">Rejeito</span>
-                                            <span id="rej-${item.lineId}" class="text-4xl xl:text-[60px] font-bold font-mono leading-none text-slate-800 dark:text-white">${numberFormatter.format(rej)}%</span>
-                                        </div>
-                                    </div>
+                                <div>
+                                    <h2 id="sector-title-${item.lineId}" class="text-sm font-bold uppercase tracking-widest text-zinc-900 dark:text-white">${item.setor}</h2>
+                                    <p class="text-zinc-500 dark:text-zinc-400 text-[10px] mt-1 uppercase font-semibold tracking-widest">Linha Operacional</p>
                                 </div>
                             </div>
-                        `;
-                        container.insertAdjacentHTML('beforeend', cardHTML);
-                        lucide.createIcons({ root: document.getElementById(`card-${item.lineId}`) });
-                    } 
-                    else {
-                        let hasChanges = false;
+                            <div id="status-${item.lineId}">${UIComponents.StatusBadge(item.eficiencia)}</div>
+                        </div>
+                        
+                        <div class="px-6 py-4 flex-1 flex flex-col justify-center">
+                            <div class="flex justify-between items-end mb-3">
+                                <span class="text-xs xl:text-sm uppercase tracking-widest text-zinc-500 dark:text-zinc-400 font-bold">Eficiência OEE</span>
+                                <span id="ef-val-${item.lineId}" class="text-5xl xl:text-6xl font-black font-mono tracking-tighter text-transparent bg-clip-text bg-gradient-to-b from-zinc-800 to-zinc-500 dark:from-white dark:to-zinc-500 leading-none">${fmtNum.format(item.eficiencia)}%</span>
+                            </div>
+                            <div class="h-2 bg-zinc-200 dark:bg-zinc-800 rounded-full overflow-hidden shadow-inner">
+                                <div id="ef-bar-${item.lineId}" class="h-full smooth-bar relative" style="width: ${Math.min(item.eficiencia, 100)}%; background-color: ${barColor}">
+                                    <div class="absolute inset-0 bg-white/20 w-full h-full"></div>
+                                </div>
+                            </div>
+                        </div>
 
-                        const updateText = (id, newText) => {
-                            const el = document.getElementById(id);
-                            if(el && el.textContent !== newText) {
-                                el.textContent = newText;
-                                hasChanges = true;
-                            }
-                        };
+                        <div class="grid grid-cols-4 divide-x divide-zinc-200 dark:divide-white/5 border-t border-zinc-200 dark:border-white/5 bg-zinc-100/50 dark:bg-black/20 flex-none rounded-b-3xl">
+                            <div class="p-4 flex flex-col items-center justify-center text-center group cursor-default">
+                                <span class="text-[9px] xl:text-[10px] uppercase tracking-widest text-zinc-500 font-bold mb-1.5 transition-colors group-hover:text-zinc-900 dark:group-hover:text-white">Meta</span>
+                                <span id="meta-${item.lineId}" class="text-xl xl:text-3xl font-bold font-mono text-zinc-800 dark:text-zinc-200">${fmtInt.format(item.meta)}</span>
+                            </div>
+                            <div class="p-4 flex flex-col items-center justify-center text-center group cursor-default">
+                                <span class="text-[9px] xl:text-[10px] uppercase tracking-widest text-zinc-500 font-bold mb-1.5 transition-colors group-hover:text-zinc-900 dark:group-hover:text-white">Real</span>
+                                <span id="real-${item.lineId}" class="text-xl xl:text-3xl font-bold font-mono ${trendUp ? 'text-emerald-500' : 'text-red-500'} flex items-center gap-1">
+                                    ${fmtInt.format(item.realizado)}
+                                </span>
+                            </div>
+                            <div class="p-4 flex flex-col items-center justify-center text-center group cursor-default">
+                                <span class="text-[9px] xl:text-[10px] uppercase tracking-widest text-zinc-500 font-bold mb-1.5 transition-colors group-hover:text-zinc-900 dark:group-hover:text-white">Op. HC</span>
+                                <span id="hc-${item.lineId}" class="text-xl xl:text-3xl font-bold font-mono text-zinc-800 dark:text-zinc-200">${fmtInt.format(item.hc_prog)}</span>
+                            </div>
+                            <div class="p-4 flex flex-col items-center justify-center text-center group cursor-default">
+                                <span class="text-[9px] xl:text-[10px] uppercase tracking-widest text-zinc-500 font-bold mb-1.5 transition-colors group-hover:text-zinc-900 dark:group-hover:text-white">Rejeito</span>
+                                <span id="rej-${item.lineId}" class="text-xl xl:text-3xl font-bold font-mono text-zinc-800 dark:text-zinc-200">${fmtNum.format(item.rejeito)}%</span>
+                            </div>
+                        </div>
+                    </div>
+                `
+            };
 
-                        updateText(`sector-title-${item.lineId}`, item.setor); 
-                        updateText(`ef-val-${item.lineId}`, `${numberFormatter.format(ef)}%`);
-                        updateText(`meta-${item.lineId}`, intFormatter.format(meta));
-                        updateText(`real-${item.lineId}`, intFormatter.format(real));
-                        updateText(`hc-${item.lineId}`, intFormatter.format(hc));
-                        updateText(`rej-${item.lineId}`, `${numberFormatter.format(rej)}%`);
+            /**
+             * 3. CONTROLADOR DOM
+             */
+            const DOMController = {
+                updateText: (id, newText, checkHasChanges = () => {}) => {
+                    const el = document.getElementById(id);
+                    if (el && el.textContent !== newText) {
+                        el.textContent = newText;
+                        checkHasChanges();
+                    }
+                },
+                getBarColor: (ef, fallback) => ef < 50 ? '#ef4444' : ef < 85 ? '#f59e0b' : fallback,
+                normalizeSector: (s) => {
+                    if (!s) return 'outros';
+                    const str = s.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+                    if (str.includes('auto')) return 'automotivo';
+                    if (str.includes('descart')) return 'descartaveis';
+                    if (str.includes('cirurg')) return 'cirurgico';
+                    return 'outros';
+                }
+            };
+
+            function renderEngine() {
+                const dataArray = Object.values(state);
+                let totalEf = 0, countLines = 0;
+
+                const linesContainer = document.getElementById('lines-container');
+                if (!linesContainer) return;
+
+                // --- LINHAS ---
+                dataArray.forEach((item, index) => {
+                    const ef = Number(item.eficiencia) || 0;
+                    if (item.meta > 0 || item.hc_prog > 0 || ef > 0) { totalEf += ef; countLines++; }
+
+                    const theme = THEME.lines[item.lineId] || { color: "#71717a", bg: "bg-zinc-800", text: "text-zinc-400" };
+                    const barColor = DOMController.getBarColor(ef, theme.color);
+                    const prevEf = previousStateData.get(item.lineId)?.eficiencia || ef;
+                    const trendUp = ef >= prevEf;
+
+                    const cardEl = document.getElementById(`card-${item.lineId}`);
+
+                    if (!cardEl) {
+                        linesContainer.insertAdjacentHTML('beforeend', UIComponents.LineCard(item, index, theme, barColor, trendUp));
+                        const newCard = document.getElementById(`card-${item.lineId}`);
+                        if (newCard && window.lucide) lucide.createIcons({ root: newCard });
+                    } else {
+                        let changed = false;
+                        const markChange = () => { changed = true; };
+
+                        DOMController.updateText(`sector-title-${item.lineId}`, item.setor, markChange);
+                        DOMController.updateText(`ef-val-${item.lineId}`, `${fmtNum.format(ef)}%`, markChange);
+                        DOMController.updateText(`meta-${item.lineId}`, fmtInt.format(item.meta), markChange);
+                        DOMController.updateText(`real-${item.lineId}`, fmtInt.format(item.realizado), markChange);
+                        DOMController.updateText(`hc-${item.lineId}`, fmtInt.format(item.hc_prog), markChange);
+                        DOMController.updateText(`rej-${item.lineId}`, `${fmtNum.format(item.rejeito)}%`, markChange);
 
                         const bar = document.getElementById(`ef-bar-${item.lineId}`);
-                        if (bar) {
-                            if (bar.style.width !== `${Math.min(ef, 100)}%`) {
-                                bar.style.width = `${Math.min(ef, 100)}%`;
-                                hasChanges = true;
-                                bar.parentElement.setAttribute('aria-valuenow', Math.min(ef, 100));
-                            }
-                            if (bar.style.backgroundColor !== barColor) {
-                                bar.style.backgroundColor = barColor;
-                                hasChanges = true;
-                            }
+                        if (bar && bar.style.width !== `${Math.min(ef, 100)}%`) {
+                            bar.style.width = `${Math.min(ef, 100)}%`; bar.style.backgroundColor = barColor; changed = true;
                         }
 
                         const statusEl = document.getElementById(`status-${item.lineId}`);
-                        if (statusEl && statusEl.textContent.trim() !== status.label) {
-                            statusEl.textContent = status.label;
-                            statusEl.className = `text-[9px] font-bold px-2.5 py-1 rounded-full uppercase tracking-widest ${status.cls}`;
-                            hasChanges = true;
+                        const newBadge = UIComponents.StatusBadge(ef);
+                        if (statusEl && statusEl.innerHTML !== newBadge) {
+                            statusEl.innerHTML = newBadge; changed = true;
                         }
 
-                        if (hasChanges) {
+                        if (changed) {
                             const realEl = document.getElementById(`real-${item.lineId}`);
-                            const trendIconContainer = document.getElementById(`trend-icon-${item.lineId}`);
+                            if (realEl) realEl.className = `text-xl xl:text-3xl font-bold font-mono ${trendUp ? 'text-emerald-500' : 'text-red-500'} flex items-center gap-1`;
                             
-                            trendIconContainer.innerHTML = getTrendSvg(trendUp);
-                            realEl.className = `text-4xl xl:text-[60px] font-bold font-mono leading-none ${trendUp ? 'text-emerald-600 dark:text-emerald-500' : 'text-red-600 dark:text-red-500'}`;
-                            
-                            card.classList.remove('flash-update');
-                            void card.offsetWidth; 
-                            card.classList.add('flash-update');
+                            cardEl.classList.remove('data-update-flash');
+                            void cardEl.offsetWidth; // Trigger reflow for animation restart
+                            cardEl.classList.add('data-update-flash');
                         }
                     }
-
-                    previousDataMap.set(item.lineId, item);
+                    previousStateData.set(item.lineId, { ...item });
                 });
 
-                // --- OEE GLOBAL ---
-                const globalOeeEl = document.getElementById('global-oee');
-                if (flattenedData.length > 0) {
-                    const avgOee = activeLinesCount > 0 ? (totalEficienciaAtivas / activeLinesCount) : 0;
-                    globalOeeEl.textContent = `${numberFormatter.format(avgOee)}%`;
-                    globalOeeEl.className = `text-6xl xl:text-[80px] font-extrabold mono leading-none mt-1 ${avgOee < 85 ? 'text-amber-500 dark:text-amber-400' : 'text-blue-600 dark:text-blue-400'}`;
+                // --- OEE ---
+                const oeeEl = document.getElementById('global-oee');
+                if (oeeEl) {
+                    const avgOee = countLines > 0 ? (totalEf / countLines) : 0;
+                    oeeEl.textContent = `${fmtNum.format(avgOee)}%`;
+                    oeeEl.className = `text-6xl xl:text-[80px] font-black tracking-tighter leading-none text-oee-gradient mt-1 ${avgOee < 85 ? 'text-oee-warning' : 'text-oee-gradient'}`;
                 }
 
-                // --- RANKING PERFORMANCE (SISTEMA DE PONTOS D-1) (<ul> e <li> implementados) ---
-                const rankingLines = flattenedData.filter(item => FIXED_LINES.includes(item.lineId));
-                const sortedRanking = rankingLines.sort((a, b) => (Number(b.pontos) || 0) - (Number(a.pontos) || 0));
-                
-                rankingContainer.innerHTML = sortedRanking.map((item, idx) => {
-                    const pts = Number(item.pontos) || 0;
-                    
-                    let ptsColor = 'text-slate-500 dark:text-[#94a3b8]'; 
-                    let ptsSign = '';
-                    
-                    if (pts > 0) {
-                        ptsColor = 'text-emerald-600 dark:text-emerald-500';
-                        ptsSign = '+';
-                    } else if (pts < 0) {
-                        ptsColor = 'text-red-600 dark:text-red-500';
-                    }
+                // --- RANKING ---
+                const rankingContainer = document.getElementById('ranking-container');
+                if (rankingContainer) {
+                    const sortedRanking = [...dataArray].sort((a, b) => (b.pontos || 0) - (a.pontos || 0));
+                    rankingContainer.innerHTML = sortedRanking.map((item, idx) => {
+                        const pts = item.pontos || 0;
+                        const ptsColor = pts > 0 ? 'text-emerald-500' : pts < 0 ? 'text-red-500' : 'text-zinc-500 dark:text-zinc-400';
+                        const bgClass = (idx === 0 && pts > 0) ? 'bg-gradient-to-br from-amber-400 to-orange-500 text-white shadow-lg' : 'bg-zinc-200 dark:bg-zinc-800/50 text-zinc-600 dark:text-zinc-400';
+                        
+                        return `
+                            <li class="flex-1 flex items-center justify-between p-4 bg-zinc-100/50 hover:bg-zinc-100 dark:bg-white/5 dark:hover:bg-white/10 rounded-2xl transition-colors border border-transparent dark:border-white/5">
+                                <div class="flex items-center gap-4">
+                                    <div class="w-10 h-10 rounded-xl flex items-center justify-center font-black text-sm ${bgClass}">${idx + 1}º</div>
+                                    <span class="text-xl font-bold text-zinc-800 dark:text-white uppercase tracking-wider">${item.lineId}</span>
+                                </div>
+                                <span class="text-2xl xl:text-3xl font-black font-mono ${ptsColor}">${pts > 0 ? '+' : ''}${pts} <span class="text-xs font-semibold uppercase tracking-widest opacity-60">pts</span></span>
+                            </li>
+                        `;
+                    }).join('');
+                }
 
-                    return `
-                        <li class="flex items-center justify-between p-3 lg:p-4 hover:bg-slate-50 dark:hover:bg-[#1c2128] rounded-xl transition-colors">
-                            <div class="flex items-center gap-4">
-                                <span class="w-6 h-6 xl:w-8 xl:h-8 flex items-center justify-center rounded-md font-bold text-xs xl:text-sm ${idx === 0 && pts > 0 ? 'bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-500' : 'bg-slate-200 text-slate-600 dark:bg-slate-700 dark:text-slate-400'}">
-                                    ${idx + 1}º
-                                </span>
-                                <span class="text-lg xl:text-xl font-semibold text-slate-800 dark:text-[#e2e8f0]">${item.lineId}</span>
-                            </div>
-                            <span class="text-xl xl:text-2xl font-bold font-mono ${ptsColor}">${ptsSign}${pts} pts</span>
-                        </li>
-                    `;
-                }).join('');
+                // --- SETORES ---
+                const sectorContainer = document.getElementById('sectors-container');
+                if (sectorContainer) {
+                    const sectorSums = { 'automotivo': {t:0, c:0}, 'descartaveis': {t:0, c:0}, 'cirurgico': {t:0, c:0} };
+                    dataArray.forEach(i => {
+                        const k = DOMController.normalizeSector(i.setor);
+                        if (sectorSums[k]) { sectorSums[k].t += (i.eficiencia||0); sectorSums[k].c++; }
+                    });
 
-                // --- SETORES (<ul> e <li> implementados) ---
-                const sectorSummary = {
-                    'automotivo': { total: 0, count: 0 },
-                    'descartaveis': { total: 0, count: 0 },
-                    'cirurgico': { total: 0, count: 0 }
-                };
+                    sectorContainer.innerHTML = FIXED_SECTORS.map(sec => {
+                        const avg = sectorSums[sec.key].c > 0 ? (sectorSums[sec.key].t / sectorSums[sec.key].c) : 0;
+                        const sColor = DOMController.getBarColor(avg, '#3b82f6');
+                        return `
+                            <li class="space-y-3">
+                                <div class="flex justify-between items-end">
+                                    <span class="text-sm font-bold text-zinc-700 dark:text-zinc-200 uppercase tracking-widest">${sec.label}</span>
+                                    <span class="text-xl font-black font-mono" style="color: ${sColor}">${fmtNum.format(avg)}%</span>
+                                </div>
+                                <div class="h-3 bg-zinc-200 dark:bg-zinc-800/50 rounded-full overflow-hidden shadow-inner">
+                                    <div class="h-full smooth-bar relative" style="width: ${Math.min(avg, 100)}%; background-color: ${sColor}">
+                                        <div class="absolute inset-0 bg-white/20 w-full h-full"></div>    
+                                    </div>
+                                </div>
+                            </li>
+                        `;
+                    }).join('');
+                }
 
-                flattenedData.forEach(item => {
-                    const normKey = normalizeSector(item.setor);
-                    if (sectorSummary[normKey]) {
-                        sectorSummary[normKey].total += Number(item.eficiencia) || 0;
-                        sectorSummary[normKey].count++; 
-                    }
-                });
-
-                sectorContainer.innerHTML = FIXED_SECTORS.map(sec => {
-                    const data = sectorSummary[sec.key];
-                    const avg = data.count > 0 ? (data.total / data.count) : 0; 
-                    const sectorColor = getBarColor(avg, '#3b82f6'); 
-                    
-                    return `
-                        <li class="space-y-2">
-                            <div class="flex justify-between items-end">
-                                <span class="text-sm xl:text-base font-bold text-slate-800 dark:text-[#e2e8f0] uppercase tracking-tight">${sec.label}</span>
-                                <span class="text-xl xl:text-2xl font-mono font-bold" style="color: ${sectorColor}">${numberFormatter.format(avg)}%</span>
-                            </div>
-                            <div class="h-4 xl:h-5 bg-slate-100 dark:bg-[#0d1117] rounded-full overflow-hidden border border-slate-200 dark:border-[#30363d]" role="progressbar" aria-valuenow="${Math.min(avg, 100)}" aria-valuemin="0" aria-valuemax="100">
-                                <div class="h-full progress-transition" style="width: ${Math.min(avg, 100)}%; background-color: ${sectorColor}"></div>
-                            </div>
-                        </li>
-                    `;
-                }).join('');
+                const loadingSkeletons = document.getElementById('loading-skeletons');
+                if (loadingSkeletons) loadingSkeletons.remove();
             }
 
+            /**
+             * 4. INICIALIZAÇÃO & BINDINGS
+             */
             window.addEventListener('DOMContentLoaded', () => {
                 if (window.lucide) lucide.createIcons();
 
+                // UI Interactivity
+                const btnTheme = document.getElementById('btn-theme');
+                if (btnTheme) {
+                    btnTheme.addEventListener('click', () => document.documentElement.classList.toggle('dark'));
+                }
+                
+                const btnFullscreen = document.getElementById('btn-fullscreen');
+                if (btnFullscreen) {
+                    btnFullscreen.addEventListener('click', () => {
+                        if (!document.fullscreenElement) document.documentElement.requestFullscreen().catch(e => console.error(e));
+                        else document.exitFullscreen();
+                    });
+                }
+
+                // Clock Safely
                 setInterval(() => {
-                    const now = new Date();
+                    const d = new Date();
                     const timeEl = document.getElementById('current-time');
                     const dateEl = document.getElementById('current-date');
-                    
-                    if(timeEl) timeEl.innerText = now.toLocaleTimeString('pt-BR');
-                    if(dateEl) dateEl.innerText = now.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+                    if (timeEl) timeEl.textContent = d.toLocaleTimeString('pt-BR');
+                    if (dateEl) dateEl.textContent = d.toLocaleDateString('pt-BR', {day:'2-digit', month:'2-digit', year:'numeric'});
                 }, 1000);
 
+                // Firebase Service
                 try {
-                    const firebaseConfig = { databaseURL: "https://paineltv-44596-default-rtdb.firebaseio.com/" };
-                    if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
-                    const db = firebase.database();
+                    if (typeof firebase === 'undefined') {
+                        throw new Error('SDK do Firebase não foi carregado corretamente.');
+                    }
 
-                    db.ref('dashboard').on('value', (snapshot) => {
-                        const rawData = snapshot.val() || {};
-                        
-                        Object.keys(currentState).forEach(k => {
-                            currentState[k].eficiencia = 0;
-                            currentState[k].meta = 0;
-                            currentState[k].realizado = 0;
-                            currentState[k].hc_prog = 0;
-                            currentState[k].rejeito = 0;
-                        });
+                    if (!firebase.apps.length) firebase.initializeApp({ databaseURL: "https://paineltv-44596-default-rtdb.firebaseio.com/" });
+                    
+                    firebase.database().ref('dashboard').on('value', (snapshot) => {
+                        try {
+                            const dbData = snapshot.val() || {};
+                            
+                            Object.keys(state).forEach(k => {
+                                state[k].eficiencia = state[k].meta = state[k].realizado = state[k].hc_prog = state[k].rejeito = 0;
+                            });
 
-                        Object.keys(rawData).forEach(setorName => {
-                            const setorData = rawData[setorName];
-                            Object.keys(setorData).forEach(lineId => {
-                                if (!currentState[lineId]) {
-                                    currentState[lineId] = { lineId: lineId };
-                                }
-                                currentState[lineId].setor = setorName;
-                                currentState[lineId].eficiencia = setorData[lineId].eficiencia || 0;
-                                currentState[lineId].meta = setorData[lineId].meta || 0;
-                                currentState[lineId].realizado = setorData[lineId].realizado || 0;
-                                currentState[lineId].hc_prog = setorData[lineId].hc_prog || 0;
-                                currentState[lineId].rejeito = setorData[lineId].rejeito || 0;
-
-                                if (setorData[lineId].pontos_ontem !== undefined) {
-                                    currentState[lineId].pontos = setorData[lineId].pontos_ontem;
-                                } else if (setorData[lineId].pontos !== undefined) {
-                                    currentState[lineId].pontos = setorData[lineId].pontos;
-                                } else {
-                                    currentState[lineId].pontos = 0; 
+                            Object.keys(dbData).forEach(setor => {
+                                const setorData = dbData[setor];
+                                // Prevenção de erro caso o nó Firebase retorne uma string ou valor inválido em vez de objeto
+                                if (setorData && typeof setorData === 'object') {
+                                    Object.keys(setorData).forEach(line => {
+                                        if (!state[line]) state[line] = { lineId: line };
+                                        const payload = setorData[line];
+                                        
+                                        state[line] = {
+                                            ...state[line], setor: setor,
+                                            eficiencia: payload.eficiencia || 0,
+                                            meta: payload.meta || 0,
+                                            realizado: payload.realizado || 0,
+                                            hc_prog: payload.hc_prog || 0,
+                                            rejeito: payload.rejeito || 0,
+                                            pontos: payload.pontos_ontem ?? payload.pontos ?? Math.max(-15, Math.min(15, (payload.eficiencia||0) > 0 ? Math.round(payload.eficiencia - 100) : 0))
+                                        };
+                                    });
                                 }
                             });
-                        });
 
-                        flattenedData = Object.values(currentState);
-                        renderDashboard();
-                        
-                        const alertEl = document.getElementById('alert-marquee');
-                        if (alertEl) {
-                            alertEl.innerText = `SISTEMA ONLINE: Consolidando dados mensais. Última sincronização: ${new Date().toLocaleTimeString('pt-BR')}`;
+                            renderEngine();
+
+                            const alertMarquee = document.getElementById('alert-marquee');
+                            if (alertMarquee) alertMarquee.textContent = `Dados da Fábrica Sincronizados com sucesso • ${new Date().toLocaleTimeString('pt-BR')}`;
+                            
+                            const footerIcon = document.getElementById('footer-status')?.querySelector('i');
+                            if (footerIcon) {
+                                footerIcon.classList.remove('text-amber-500', 'text-red-500');
+                                footerIcon.classList.add('text-emerald-500');
+                            }
+                        } catch (processError) {
+                            console.error("Erro interno ao renderizar os dados:", processError);
                         }
+                    }, (error) => {
+                        console.error("Erro no Firebase:", error);
+                        const alertMarquee = document.getElementById('alert-marquee');
+                        if (alertMarquee) alertMarquee.textContent = "Permissão Negada ou Erro de Leitura no Banco de Dados.";
                     });
-                } catch (e) {
-                    console.error("Firebase Init Error:", e);
-                    const alertEl = document.getElementById('alert-marquee');
-                    if (alertEl) alertEl.innerText = "ERRO: Falha ao estabelecer conexão com o servidor industrial.";
+                } catch (err) {
+                    console.error("Erro na inicialização do Firebase:", err);
+                    const alertMarquee = document.getElementById('alert-marquee');
+                    if (alertMarquee) alertMarquee.textContent = "Falha de Conexão. Verifique o servidor Firebase.";
+                    
+                    const footerIcon = document.getElementById('footer-status')?.querySelector('i');
+                    if (footerIcon) {
+                        footerIcon.classList.remove('text-emerald-500', 'text-amber-500');
+                        footerIcon.classList.add('text-red-500');
+                    }
                 }
             });
         })();
