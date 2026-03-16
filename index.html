@@ -52,14 +52,6 @@
                 @apply font-black tracking-tighter text-transparent bg-clip-text bg-gradient-to-br from-white to-zinc-400;
             }
             
-            /* Efeitos Puros de OEE */
-            .text-oee-gradient {
-                @apply bg-gradient-to-r from-blue-400 to-indigo-500 text-transparent bg-clip-text;
-            }
-            .text-oee-warning {
-                @apply bg-gradient-to-r from-amber-400 to-orange-500 text-transparent bg-clip-text;
-            }
-
             /* Transições Suaves */
             .smooth-bar {
                 @apply transition-all duration-1000 ease-in-out;
@@ -108,7 +100,7 @@
             <!-- OEE Global -->
             <div class="hidden md:flex flex-col items-end pr-6 border-r border-zinc-200 dark:border-brand-border">
                 <span class="text-[10px] uppercase tracking-widest text-zinc-500 dark:text-zinc-400 font-bold mb-1">OEE Global da Planta</span>
-                <span id="global-oee" class="text-6xl xl:text-[80px] font-black tracking-tighter leading-none text-oee-gradient">--%</span>
+                <span id="global-oee" class="text-6xl xl:text-[80px] font-black tracking-tighter leading-none text-blue-500">--%</span>
             </div>
 
             <!-- Relógio e Ações -->
@@ -257,7 +249,7 @@
                         <div class="px-6 py-4 flex-1 flex flex-col justify-center">
                             <div class="flex justify-between items-end mb-3">
                                 <span class="text-xs xl:text-sm uppercase tracking-widest text-zinc-500 dark:text-zinc-400 font-bold">Eficiência OEE</span>
-                                <span id="ef-val-${item.lineId}" class="text-5xl xl:text-6xl font-black font-mono tracking-tighter text-transparent bg-clip-text bg-gradient-to-b from-zinc-800 to-zinc-500 dark:from-white dark:to-zinc-500 leading-none">${fmtNum.format(item.eficiencia)}%</span>
+                                <span id="ef-val-${item.lineId}" class="text-5xl xl:text-6xl font-black font-mono tracking-tighter text-zinc-900 dark:text-white leading-none">${fmtNum.format(item.eficiencia)}%</span>
                             </div>
                             <div class="h-2 bg-zinc-200 dark:bg-zinc-800 rounded-full overflow-hidden shadow-inner">
                                 <div id="ef-bar-${item.lineId}" class="h-full smooth-bar relative" style="width: ${Math.min(item.eficiencia, 100)}%; background-color: ${barColor}">
@@ -374,7 +366,7 @@
                 if (oeeEl) {
                     const avgOee = countLines > 0 ? (totalEf / countLines) : 0;
                     oeeEl.textContent = `${fmtNum.format(avgOee)}%`;
-                    oeeEl.className = `text-6xl xl:text-[80px] font-black tracking-tighter leading-none text-oee-gradient mt-1 ${avgOee < 85 ? 'text-oee-warning' : 'text-oee-gradient'}`;
+                    oeeEl.className = `text-6xl xl:text-[80px] font-black tracking-tighter leading-none mt-1 ${avgOee < 85 ? 'text-amber-500' : 'text-blue-500'}`;
                 }
 
                 // --- RANKING ---
