@@ -33,6 +33,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@700&display=swap" rel="stylesheet">
     <script src="https://unpkg.com/lucide@latest"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script> <!-- Adicionado Chart.js -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     
     <!-- Firebase SDK v8 (App, RTDB e Firestore) -->
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
@@ -154,8 +155,8 @@
     </div>
 
     <!-- ================= LINE DETAILS VIEW (Nova Tela de Gráficos) ================= -->
-    <div id="line-details-view" class="hidden flex-col h-full w-full p-4 md:p-6 absolute inset-0 z-20 bg-zinc-50 dark:bg-brand-bg transition-opacity duration-300 opacity-0 overflow-hidden">
-        <header class="flex-none flex justify-between items-center mb-6">
+    <div id="line-details-view" class="hidden flex-col h-screen w-screen p-2 md:p-3 absolute inset-0 z-20 bg-zinc-50 dark:bg-brand-bg transition-opacity duration-300 opacity-0 overflow-hidden">
+        <header class="flex-none flex justify-between items-center mb-2">
             <!-- Esquerda: Título -->
             <div class="flex items-center gap-4">
                 <button id="btn-close-details" class="p-4 bg-white dark:bg-brand-surface border border-zinc-200 dark:border-brand-border rounded-2xl hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors text-zinc-600 dark:text-zinc-300">
@@ -186,24 +187,24 @@
             </div>
         </header>
 
-        <!-- Grid de Gráficos (Empilhados Verticalmente 50/50 exatos) -->
-        <div class="flex-1 min-h-0 grid grid-rows-2 gap-6 pb-2">
+        <!-- Container de Gráficos (Flexbox 50/50 Vertical: Ocupa toda a altura restante) -->
+        <div class="flex-1 flex flex-col gap-3 min-h-0 overflow-hidden">
             <!-- Gráfico 1: Eficiência -->
-            <div class="glass-card rounded-[2rem] p-6 flex flex-col shadow-lg h-full min-h-0">
-                <div class="flex items-center gap-3 mb-4 flex-none">
+            <div class="flex-1 glass-card rounded-[1.5rem] p-4 flex flex-col shadow-2xl min-h-[40vh] border-l-8 border-l-blue-500">
+                <div class="flex items-center gap-4 mb-2 flex-none">
                     <i data-lucide="activity" class="w-8 h-8 text-blue-500"></i>
                     <h3 class="text-2xl font-black uppercase tracking-widest text-zinc-800 dark:text-zinc-100">Eficiência OEE</h3>
                 </div>
-                <div class="flex-1 min-h-0 relative w-full h-full"><canvas id="chart-eficiencia"></canvas></div>
+                <div class="flex-1 relative w-full h-full"><canvas id="chart-eficiencia"></canvas></div>
             </div>
 
             <!-- Gráfico 2: Rejeito -->
-            <div class="glass-card rounded-[2rem] p-6 flex flex-col shadow-lg h-full min-h-0">
-                <div class="flex items-center gap-3 mb-4 flex-none">
+            <div class="flex-1 glass-card rounded-[1.5rem] p-4 flex flex-col shadow-2xl min-h-[40vh] border-l-8 border-l-red-500">
+                <div class="flex items-center gap-4 mb-2 flex-none">
                     <i data-lucide="alert-octagon" class="w-8 h-8 text-red-500"></i>
                     <h3 class="text-2xl font-black uppercase tracking-widest text-zinc-800 dark:text-zinc-100">Rejeito Registado</h3>
                 </div>
-                <div class="flex-1 min-h-0 relative w-full h-full"><canvas id="chart-rejeito"></canvas></div>
+                <div class="flex-1 relative w-full h-full"><canvas id="chart-rejeito"></canvas></div>
             </div>
         </div>
     </div>
@@ -224,9 +225,18 @@
                     </p>
                 </div>
             </div>
-            <button id="btn-add-record" class="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-5 py-3 rounded-xl font-bold uppercase tracking-widest text-xs transition-colors shadow-lg shadow-blue-500/30">
-                <i data-lucide="plus" class="w-4 h-4"></i> Novo Registo
-            </button>
+            <div class="flex gap-3">
+                <button id="btn-download-template" class="flex items-center gap-2 bg-zinc-200 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 px-5 py-3 rounded-xl font-bold uppercase tracking-widest text-[10px] transition-colors hover:bg-zinc-300 dark:hover:bg-zinc-700">
+                    <i data-lucide="download" class="w-4 h-4"></i> Baixar Modelo
+                </button>
+                <label class="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-3 rounded-xl font-bold uppercase tracking-widest text-[10px] transition-colors shadow-lg shadow-emerald-500/20 cursor-pointer">
+                    <i data-lucide="file-up" class="w-4 h-4"></i> Importar Planilha
+                    <input type="file" id="input-import-xlsx" class="hidden" accept=".xlsx, .xls">
+                </label>
+                <button id="btn-add-record" class="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-5 py-3 rounded-xl font-bold uppercase tracking-widest text-[10px] transition-colors shadow-lg shadow-blue-500/30">
+                    <i data-lucide="plus" class="w-4 h-4"></i> Novo Registo
+                </button>
+            </div>
         </header>
 
         <!-- Tabela de Dados -->
@@ -363,10 +373,11 @@
                     const hcDisplay = hcIsLow ? `${hcReal}/${item.hc_prog}` : item.hc_prog;
                     const hcClass = hcIsLow ? 'text-red-500 animate-pulse' : 'text-zinc-800 dark:text-zinc-200';
 
-                    // Modo TV Automático: Cartões sem clique manual
+                    // Modo TV Automático: Cartões agora com clique manual
                     return `
                     <div id="card-${item.lineId}" 
-                         class="glass-card rounded-[2rem] flex flex-col h-full animate-fade-up transition-all duration-500" 
+                         onclick="window.openLineDetails('${item.lineId}', true)"
+                         class="glass-card rounded-[2rem] flex flex-col h-full animate-fade-up transition-all duration-500 cursor-pointer hover:ring-2 hover:ring-blue-500/50 hover:shadow-2xl" 
                          style="animation-delay: ${idx * 0.1}s">
                         <div class="px-8 py-6 border-b border-black/5 dark:border-white/5 flex justify-between items-center flex-none">
                             <div class="flex items-center gap-5">
@@ -395,6 +406,8 @@
                             <div class="p-6 flex flex-col items-center justify-center text-center">
                                 <span class="text-xs xl:text-sm uppercase tracking-widest text-zinc-500 font-bold mb-2">Real</span>
                                 <span id="real-${item.lineId}" class="text-3xl xl:text-4xl font-black font-mono ${trendUp ? 'text-emerald-500' : 'text-red-500'} flex items-center gap-1">${fmtInt.format(item.realizado)}</span>
+                                <!-- Projeção de Fechamento -->
+                                <p id="proj-${item.lineId}" class="text-[10px] font-bold text-zinc-400 dark:text-zinc-500 mt-1 uppercase tracking-tight">Projeção: --</p>
                             </div>
                             <div class="p-6 flex flex-col items-center justify-center text-center">
                                 <span class="text-xs xl:text-sm uppercase tracking-widest text-zinc-500 font-bold mb-2">Op. HC</span>
@@ -413,6 +426,22 @@
                 updateText: (id, newText, checkHasChanges = () => {}) => { const el = document.getElementById(id); if (el && el.textContent !== newText) { el.textContent = newText; checkHasChanges(); } },
                 getBarColor: (ef, fallback) => ef < 50 ? '#ef4444' : ef < 85 ? '#f59e0b' : fallback
             };
+
+            // Função para calcular projeção linear baseada no tempo de turno
+            function calculateProjection(realized) {
+                const now = new Date();
+                // Horário de Início (Ex: 07:30:00)
+                const start = new Date(); start.setHours(7, 30, 0);
+                // Horário de Término (Ex: 17:00:00)
+                const end = new Date(); end.setHours(17, 20, 0);
+                
+                if (now < start) return 0;
+                if (now > end) return realized;
+                
+                const elapsed = (now - start) / 1000 / 60; // minutos decorridos
+                const total = (end - start) / 1000 / 60;   // minutos totais
+                return elapsed > 0 ? Math.round((realized / elapsed) * total) : 0;
+            }
 
             function renderLines() {
                 const dataArray = Object.values(liveLineState);
@@ -521,10 +550,11 @@
             }
 
             /** ================= LÓGICA DE GRÁFICOS (CHART.JS) ================= */
-            window.openLineDetails = (lineId) => {
+            window.openLineDetails = (lineId, isManual = false) => {
                 const viewDashboard = document.getElementById('dashboard-view');
                 const viewDetails = document.getElementById('line-details-view');
                 
+                if (isManual) presentationPaused = true; // Pausa a rotação automática se clicar manualmente
                 document.getElementById('details-line-title').innerHTML = `Linha ${lineId} - Indicadores de Qualidade`;
                 
                 // Esconde Dashboard, Mostra Detalhes
@@ -544,6 +574,7 @@
                 const viewDashboard = document.getElementById('dashboard-view');
                 const viewDetails = document.getElementById('line-details-view');
                 
+                presentationPaused = false; // Retoma a rotação automática ao fechar
                 viewDetails.classList.add('opacity-0');
                 setTimeout(() => { 
                     viewDetails.classList.add('hidden'); 
@@ -558,14 +589,19 @@
 
             function renderChartsForLine(lineId) {
                 // Filtra os dados históricos apenas para a linha selecionada e ordena por data crescente
+                const now = new Date();
+                const currentMonthStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+
                 const lineData = historicoData
-                    .filter(d => d.linha === lineId)
+                    .filter(d => d.linha && String(d.linha).trim().toUpperCase() === String(lineId).trim().toUpperCase())
+                    .filter(d => d.data && d.data.includes(currentMonthStr)) // Adiciona filtro por mês atual
                     .sort((a, b) => new Date(a.data) - new Date(b.data));
 
                 // Reseta os valores médios caso não haja dados
                 if(lineData.length === 0) {
                     document.getElementById('details-avg-eficiencia').textContent = '--%';
                     document.getElementById('details-avg-rejeito').textContent = '--%';
+                    console.warn(`Atenção: Nenhum dado histórico encontrado na planilha para a linha "${lineId}" no mês atual.`);
                     return;
                 }
 
@@ -594,8 +630,8 @@
                     return `${parts[2]}/${parts[1]}`; // Formato DD/MM
                 });
                 
-                const dataRejeito = lineData.map(d => Number(d.rejeito) || 0);
-                const dataEficiencia = lineData.map(d => (d.meta > 0 ? (d.realizado / d.meta) * 100 : 0).toFixed(1));
+                const dataRejeito = lineData.map(d => Number((d.realizado > 0 ? (d.rejeito / d.realizado) * 100 : 0).toFixed(1)));
+                const dataEficiencia = lineData.map(d => Number((d.meta > 0 ? (d.realizado / d.meta) * 100 : 0).toFixed(1)));
 
                 // Metas Fixas (Pode ser ajustado para ler do Firebase no futuro)
                 const metaRejeitoArr = Array(labels.length).fill(3); // Meta de 3% de Rejeito
@@ -615,10 +651,10 @@
                     plugins: {
                         legend: { 
                             position: 'bottom', 
-                            labels: { color: textColor, font: { family: 'Inter', weight: 'bold', size: 16 }, padding: 20 } 
+                            labels: { color: textColor, font: { family: 'Inter', weight: 'black', size: 24 }, padding: 30 } 
                         },
                         tooltip: { 
-                            backgroundColor: isDark ? '#18181b' : '#ffffff', 
+                            backgroundColor: isDark ? '#27272a' : '#ffffff', 
                             titleColor: isDark ? '#ffffff' : '#000000', 
                             bodyColor: isDark ? '#a1a1aa' : '#52525b', 
                             borderColor: gridColor, 
@@ -629,24 +665,53 @@
                         }
                     },
                     scales: {
-                        y: { 
-                            beginAtZero: true, 
-                            grid: { color: gridColor, drawBorder: false }, 
-                            ticks: { color: textColor, font: { size: 16, weight: 'bold', family: 'JetBrains Mono' }, callback: function(value) { return value + '%'; } } 
-                        },
-                        x: { 
-                            grid: { display: false }, 
-                            ticks: { color: textColor, font: { size: 16, weight: 'bold', family: 'JetBrains Mono' } } 
+                            y: { 
+                                min: 0,
+                                max: 100,
+                                beginAtZero: true,
+                                grid: { color: gridColor, drawBorder: false }, 
+                                ticks: { 
+                                    color: textColor, 
+                                    font: { size: 24, weight: 'black', family: 'JetBrains Mono' }, 
+                                    autoSkip: false,
+                                    stepSize: 10,
+                                    maxTicksLimit: 11,
+                                    // Compatibilidade com Chart.js v3 (recebe valor) e v4 (recebe contexto)
+                                    callback: function(context) {
+                                        // Compatível com várias assinaturas: número (v3), objeto de contexto (v4)
+                                        const ctx = arguments[0];
+                                        let raw = ctx;
+                                        if (typeof ctx === 'object' && ctx !== null) {
+                                            if (ctx.value !== undefined) raw = ctx.value;
+                                            else if (ctx.tick && ctx.tick.value !== undefined) raw = ctx.tick.value;
+                                            else if (ctx.formattedValue !== undefined) raw = ctx.formattedValue;
+                                            else if (ctx.label !== undefined) raw = ctx.label;
+                                        }
+                                        // Normaliza para número extraindo apenas dígitos, ponto e sinal
+                                        const asNumber = Number(String(raw).replace(/[^0-9.-]+/g, ''));
+                                        if (isNaN(asNumber)) return String(raw);
+                                        return asNumber + '%';
+                                    }
+                                } 
+                            },
+                            x: { 
+                                grid: { display: false }, 
+                                ticks: { color: textColor, font: { size: 24, weight: 'bold', family: 'JetBrains Mono' } } 
+                            }
                         }
-                    }
                 };
 
+                // DEBUG: imprime arrays e configuração do eixo Y para ajudar a diagnosticar ticks zerados
+                try {
+                    console.log('DEBUG chart for line', { labels, dataEficiencia, dataRejeito, metaEficienciaArr, metaRejeitoArr, yScale: commonOptions.scales.y });
+                } catch (e) { console.warn('DEBUG log failed', e); }
+
                 // Função utilitária para gerar os Gráficos Mistos (Barra + Linha Meta)
-                const createMixedChart = (canvasId, labelBar, dataBar, labelLine, dataLine, colorLine) => {
+                const createMixedChart = (canvasId, labelBar, dataBar, labelLine, dataLine, colorLine, isEfficiency = true) => {
                     const ctx = document.getElementById(canvasId).getContext('2d');
                     if (chartInstances[canvasId]) chartInstances[canvasId].destroy(); // Limpa o gráfico anterior
                     
-                    chartInstances[canvasId] = new Chart(ctx, {
+                    const config = {
                         type: 'bar',
                         data: {
                             labels: labels,
@@ -657,7 +722,7 @@
                                     label: labelLine,
                                     data: dataLine,
                                     borderColor: colorLine,
-                                    backgroundColor: colorLine,
+                                    backgroundColor: 'transparent',
                                     borderWidth: 4, // Mais grossa para TV
                                     pointBackgroundColor: colorLine,
                                     pointRadius: 6, // Bolinha maior para TV
@@ -669,21 +734,52 @@
                                     // As Barras de Resultados Dia a Dia
                                     type: 'bar',
                                     label: labelBar,
-                                    data: dataBar,
-                                    backgroundColor: barColor,
+                                    data: dataBar,                                    
+                                    backgroundColor: dataBar.map(val => {
+                                        if (isEfficiency) {
+                                            return val >= 100 ? '#10b981' : '#ef4444'; // Verde se >= 100%, Vermelho se abaixo
+                                        } else {
+                                            return val <= 3 ? '#3b82f6' : '#ef4444'; // Azul se dentro da meta de rejeito, Vermelho se acima
+                                        }
+                                    }),
                                     borderRadius: 6, // Cantos mais redondos
                                     barPercentage: 0.6,
                                     order: 2
                                 }
                             ]
                         },
-                        options: commonOptions
-                    });
+                        // Garante que cada gráfico tenha sua própria instância de escalas para não travar os valores
+                        options: { 
+                            ...commonOptions,
+                            scales: {
+                                ...commonOptions.scales,
+                                y: {
+                                    ...commonOptions.scales.y,
+                                    ticks: { ...commonOptions.scales.y.ticks }
+                                }
+                            }
+                        }
+                    };
+
+                    // Adiciona Data Labels customizados (Simulação simples via Plugin nativo se necessário, 
+                    // ou apenas garantindo que as cores ajudem o operador)
+                    chartInstances[canvasId] = new Chart(ctx, config);
                 };
 
-                // Cria apenas os 2 gráficos solicitados
-                createMixedChart('chart-eficiencia', 'Realizado (%)', dataEficiencia, 'Meta Eficiência', metaEficienciaArr, '#3b82f6'); // Azul
-                createMixedChart('chart-rejeito', 'Rejeito (%)', dataRejeito, 'Meta Rejeito', metaRejeitoArr, '#ef4444'); // Vermelho
+                // Cria os 2 gráficos com a lógica de semáforo
+                // Eficiência: Meta 85% (Verde/Vermelho)
+                createMixedChart(
+                    'chart-eficiencia', 
+                    'Realizado (%)', 
+                    dataEficiencia, 
+                    'Meta Mínima (100%)', 
+                    metaEficienciaArr, 
+                    isDark ? '#fff' : '#000', // Linha de meta em Branco/Preto para máximo contraste
+                    true
+                ); 
+
+                // Rejeito: Meta 3% (Azul/Vermelho)
+                createMixedChart('chart-rejeito', 'Rejeito (%)', dataRejeito, 'Limite Máx (3%)', metaRejeitoArr, '#ef4444', false);
             }
 
             /** ================= INICIALIZAÇÃO ================= */
@@ -694,6 +790,11 @@
                 const viewManage = document.getElementById('management-view');
                 
                 document.getElementById('btn-open-manage')?.addEventListener('click', () => {
+                    const pin = prompt("🔒 Acesso Restrito. Insira o PIN:");
+                    if (pin !== "1234") {
+                        alert("PIN Incorreto!");
+                        return;
+                    }
                     presentationPaused = true; // Pausa a apresentação para o gestor poder editar
                     viewDashboard.classList.add('opacity-0');
                     setTimeout(() => { viewDashboard.classList.add('hidden'); viewManage.classList.remove('hidden'); setTimeout(() => viewManage.classList.remove('opacity-0'), 50); }, 300);
@@ -740,6 +841,129 @@
                     const rtdb = firebase.database();
                     const firestore = firebase.firestore();
 
+                    // Listener para carregar histórico do Firestore em tempo real (Substitui o carregamento da planilha)
+                    firestore.collection('historico_producao')
+                        .onSnapshot((snapshot) => {
+                            const now = new Date();
+                            historicoData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                            console.log(`Firestore Sync: ${historicoData.length} registros carregados.`);
+                            renderTable();
+                        }, (err) => console.error("Erro ao sincronizar Firestore:", err));
+
+                    // LÓGICA DE IMPORTAÇÃO DE PLANILHA
+                    document.getElementById('btn-download-template')?.addEventListener('click', () => {
+                        const template = [
+                            { 
+                                "Data": new Date().toLocaleDateString('pt-BR'), 
+                                "Setor": "automotivo", 
+                                "Linha": "LA", 
+                                "Meta": 1000, 
+                                "Realizado": 850, 
+                                "HC Prog": 10, 
+                                "HC Real": 9, 
+                                "Rejeito (%)": 1.5, 
+                                "Retrabalho (%)": 0.5 
+                            }
+                        ];
+                        const ws = XLSX.utils.json_to_sheet(template);
+                        const wb = XLSX.utils.book_new();
+                        XLSX.utils.book_append_sheet(wb, ws, "Producao");
+                        XLSX.writeFile(wb, "modelo_importacao_producao.xlsx");
+                    });
+
+                    document.getElementById('input-import-xlsx')?.addEventListener('change', async (e) => {
+                        const file = e.target.files[0];
+                        if (!file) return;
+
+                        const reader = new FileReader();
+                        reader.onload = async (evt) => {
+                            try {
+                                const data = new Uint8Array(evt.target.result);
+                                const workbook = XLSX.read(data, { type: 'array', cellDates: true });
+                                const sheet = workbook.Sheets[workbook.SheetNames[0]];
+                                const json = XLSX.utils.sheet_to_json(sheet);
+
+                                if (json.length === 0) {
+                                    alert("A planilha está vazia.");
+                                    return;
+                                }
+
+                                if (!confirm(`Deseja importar ${json.length} registos para o Firestore?`)) return;
+
+                                const batch = firestore.batch();
+                                let count = 0;
+
+                                json.forEach(row => {
+                                    let dateVal = row["Data"];
+                                    let lineVal = String(row["Linha"] || "").toUpperCase().trim();
+
+                                    // Trata formatos de data do Excel (Objeto Date ou Serial numérico como 46158)
+                                    if (dateVal instanceof Date) {
+                                        const offset = dateVal.getTimezoneOffset() * 60000;
+                                        dateVal = new Date(dateVal.getTime() + offset).toISOString().split('T')[0];
+                                    } else if (typeof dateVal === 'number') {
+                                        // Converte o número serial do Excel para data JS e depois para string ISO
+                                        const dateObj = new Date((dateVal - 25569) * 86400 * 1000);
+                                        dateVal = dateObj.toISOString().split('T')[0];
+                                    } else {
+                                        dateVal = String(dateVal || "");
+                                        // Normaliza data de DD/MM/YYYY para YYYY-MM-DD se vier como texto com barras
+                                        if (dateVal.includes('/')) {
+                                            const parts = dateVal.split('/');
+                                            if (parts.length === 3) {
+                                                dateVal = `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`;
+                                            }
+                                        }
+                                    }
+
+                                    // Validação de Linha: impede importação se a linha não existir no THEME
+                                    if (!THEME.lines[lineVal]) {
+                                        console.warn(`Linha ignorada: "${lineVal}" não é válida no sistema.`);
+                                        return; 
+                                    }
+
+                                    // Mapeamento das colunas da planilha para o objeto do banco
+                                    const recordData = {
+                                        data: dateVal,
+                                        setor: String(row["Setor"]).toLowerCase(),
+                                        linha: lineVal,
+                                        meta: Number(row["Meta"]) || 0,
+                                        realizado: Number(row["Realizado"]) || 0,
+                                        hc_prog: Number(row["HC Prog"]) || 0,
+                                        hc_real: Number(row["HC Real"]) || 0,
+                                        rejeito: Number(row["Rejeito (%)"]) || 0,
+                                        retrabalho: Number(row["Retrabalho (%)"]) || 0
+                                    };
+
+                                    if (recordData.data && recordData.linha) {
+                                        const newDocRef = firestore.collection('historico_producao').doc();
+                                        batch.set(newDocRef, recordData);
+                                        count++;
+
+                                        // Sincroniza com RTDB se for a data de hoje (opcional, mas recomendado)
+                                        const todayStr = new Date().toLocaleDateString('en-CA');
+                                        if (recordData.data === todayStr) {
+                                            const efCalc = recordData.meta > 0 ? ((recordData.realizado / recordData.meta) * 100).toFixed(1) : 0;
+                                            rtdb.ref(`dashboard/${recordData.setor}/${recordData.linha}`).update({
+                                                meta: recordData.meta, realizado: recordData.realizado, 
+                                                hc_prog: recordData.hc_prog, hc_real: recordData.hc_real, 
+                                                rejeito: recordData.rejeito, eficiencia: Number(efCalc)
+                                            });
+                                        }
+                                    }
+                                });
+
+                                await batch.commit();
+                                alert(`${count} registos importados com sucesso!`);
+                                e.target.value = ""; // Reseta o input
+                            } catch (err) {
+                                console.error("Erro na importação:", err);
+                                alert("Erro ao processar a planilha. Verifique se o formato está correto.");
+                            }
+                        };
+                        reader.readAsArrayBuffer(file);
+                    });
+
                     rtdb.ref('dashboard').on('value', (snapshot) => {
                         const dbData = snapshot.val() || {};
                         Object.keys(liveLineState).forEach(k => {
@@ -764,14 +988,6 @@
                         renderLines();
                     });
 
-                    const d = new Date();
-                    const currentMonthStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-                    firestore.collection('historico_producao').where("data", ">=", `${currentMonthStr}-01`).onSnapshot((snapshot) => {
-                        historicoData = [];
-                        snapshot.forEach(doc => historicoData.push({ id: doc.id, ...doc.data() }));
-                        renderTable();
-                    });
-
                     document.getElementById('btn-save-record')?.addEventListener('click', (e) => {
                         e.preventDefault();
                         if (!form.checkValidity()) { form.reportValidity(); return; }
@@ -784,7 +1000,7 @@
                         if (id) firestore.collection('historico_producao').doc(id).update(recordData);
                         else firestore.collection('historico_producao').add(recordData);
                         
-                        const todayStrGlobal = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+                        const todayStrGlobal = `${dateNowRef.getFullYear()}-${String(dateNowRef.getMonth() + 1).padStart(2, '0')}-${String(dateNowRef.getDate()).padStart(2, '0')}`;
                         if (recordData.data === todayStrGlobal) {
                             const efCalc = recordData.meta > 0 ? ((recordData.realizado / recordData.meta) * 100).toFixed(1) : 0;
                             rtdb.ref(`dashboard/${recordData.setor}/${recordData.linha}`).update({
